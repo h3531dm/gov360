@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gov360</title>
+  <!-- Flatpickr: calendário leve com suporte PT-BR -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/pt.min.js"></script>
+  <style>
+    /* ========================
+       PRINT
+    ======================== */
+    @media print {
+      body * { visibility: hidden; }
+
+      /* Só mostra o bloco marcado como ativo para impressão */
+      .ativo-print, .ativo-print * { visibility: visible; }
+
+      .ativo-print {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        display: block !important;
+      }
+
+      .print-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 2px solid #1F4E79;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+      }
+
+      .print-logo { font-size: 18px; font-weight: bold; color: #1F4E79; }
+      .print-info { font-size: 12px; text-align: right; color: #444; line-height: 1.6; }
+
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #1F4E79 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; font-size: 11px; }
+      tr:nth-child(even) td { background: #f5f5f5; }
+
+      /* Fotos visíveis na impressão */
+      .foto-print-wrap { display: flex; gap: 10px; flex-wrap: wrap; }
+      .foto-print-wrap img {
+        width: 280px !important;
+        height: 210px !important;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .modal-row { display: flex; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+      .modal-label { font-weight: bold; color: #444; min-width: 140px; }
+      .badge-naoconforme { background: #fdeeee; color: #991B1B; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+      .badge-conforme    { background: #edf7ee; color: #1E6B45; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+
+      /* Paisagem para relatório analítico (muitas colunas) */
+      .print-paisagem { }
+      @page { margin: 1cm; }
+      body.print-modo-paisagem { }
+    }
+
+    /* Forçar paisagem quando o bloco ativo for o analítico */
+    @media print {
+      .ativo-print.precisa-paisagem ~ * { display: none; }
+    }
+
+    /* Blocos de impressão invisíveis na tela */
+    #diarioPrint           { display: none; }
+    #relatorioPrint        { display: none; }
+    #detalheAuditoriaPrint { display: none; }
+
+    /* Card do diário visível apenas na tela */
+    .diario-tela { display: block; }
+
+    /* ========================
+       RELATÓRIOS
+    ======================== */
+    .rel-totais {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .rel-total-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .rel-total-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .rel-total-value { font-size: 24px; font-weight: bold; color: var(--blue-dark); }
+    .rel-total-value.verde  { color: var(--green); }
+    .rel-total-value.vermelho { color: var(--red); }
+
+    .rel-titulo {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--blue-dark);
+      margin: 0 0 14px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .taxa-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .taxa-bar { flex: 1; height: 8px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+    .taxa-bar-fill { height: 100%; border-radius: 99px; background: var(--green); }
+    .taxa-txt { font-size: 12px; font-weight: bold; min-width: 36px; text-align: right; color: var(--muted); }
+
+    .badge-conforme    { background: #edf7ee; color: var(--green); padding: 3px 8px; border-radius: 99px; font-size: 12px; font-weight: bold; }
+    .badge-naoconforme { background: #fdeeee; color: var(--red);   padding: 3px 8px; border-radius: 99px; font-size: 12px; font-weight: bold; }
+
+    .ranking-num { font-size: 18px; font-weight: bold; color: var(--blue-dark); width: 28px; text-align: center; }
+
+    /* ========================
+       FOTOS — MINIATURAS
+    ======================== */
+    .foto-thumb-wrap {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      overflow: visible;
+      border: 1px solid var(--border);
+    }
+
+    .foto-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+    }
+
+    .foto-thumb-remove {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 22px;
+      height: 22px;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .foto-uploading {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Link do quarto no relatório analítico */
+    .link-quarto {
+      color: var(--blue-dark);
+      font-weight: bold;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    /* Modal de detalhe da auditoria */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.45);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal-box {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+      padding: 28px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-titulo {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--blue-dark);
+      margin: 0 0 18px 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .modal-fechar {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: #E8EEF4;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-weight: bold;
+      color: var(--blue-dark);
+    }
+
+    .modal-row { display: flex; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+    .modal-label { color: var(--muted); font-weight: bold; min-width: 140px; }
+    .modal-valor { color: var(--text); flex: 1; }
+
+    /* ========================
+       DESIGN TOKENS — Paleta Corporativa
+    ======================== */
+    :root {
+      --blue-dark:  #1A3F5C;   /* azul corporativo principal */
+      --blue-mid:   #2563A8;   /* azul médio para destaques */
+      --bg:         #F0F2F5;
+      --white:      #FFFFFF;
+      --text:       #1E2A38;
+      --muted:      #64748B;
+      --green:      #1E6B45;
+      --slate:      #475569;   /* cinza azulado para ações secundárias */
+      --red:        #991B1B;   /* vermelho sóbrio — só ações destrutivas */
+      --border:     #D1DAE4;
+      --shadow:     0 2px 12px rgba(0,0,0,0.07);
+      --radius:     10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* ========================
+       TOPBAR
+    ======================== */
+    .topbar {
+      background: var(--blue-dark);
+      color: #fff;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+
+    /* Área do usuário melhorada */
+    .userbox {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+    }
+
+    .userbox-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 13px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .userbox-nome { font-weight: bold; color: #fff; }
+    .userbox-cargo { font-size: 11px; color: rgba(255,255,255,0.65); }
+
+    /* ========================
+       LAYOUT
+    ======================== */
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 16px 32px;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ========================
+       CARD
+    ======================== */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .title    { margin: 0 0 14px 0; color: var(--blue-dark); font-size: 22px; font-weight: bold; }
+    .subtitle { margin: 0 0 10px 0; color: var(--blue-dark); font-size: 18px; font-weight: bold; }
+
+    /* ========================
+       GRID / STAT
+    ======================== */
+    .grid   { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+    .stat {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    .stat-value { font-size: 26px; font-weight: bold; }
+
+    .status-open   { color: var(--green); }
+    .status-closed { color: var(--red); }
+
+    /* Barra de progresso meta/realizada */
+    .progress-wrap {
+      margin-top: 14px;
+      background: #E8EEF4;
+      border-radius: 99px;
+      height: 7px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      border-radius: 99px;
+      background: var(--blue-mid);
+      transition: width 0.4s ease;
+    }
+
+    .progress-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 5px;
+      text-align: right;
+    }
+
+    /* ========================
+       BOTÕES — Hierarquia Corporativa
+    ======================== */
+    .menu-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 11px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+    }
+
+    button:hover  { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(0,0,0,0.13); }
+    button:active { filter: brightness(0.95); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; box-shadow: none; }
+
+    /* Ação principal do fluxo operacional */
+    .btn-primary   { background: var(--blue-dark); color: #fff; }
+    /* Ação de destaque (registrar — mais usada no dia) */
+    .btn-secondary { background: var(--blue-mid);  color: #fff; }
+    /* Ações neutras / navegação */
+    .btn-light     { background: #fff; color: var(--slate); border: 1px solid var(--border); }
+    /* Ação de encerramento — tom sóbrio, não alarme */
+    .btn-warning   { background: var(--slate); color: #fff; }
+    /* Apenas para ações destrutivas irreversíveis */
+    .btn-danger    { background: var(--red); color: #fff; }
+    /* Sucesso */
+    .btn-success   { background: var(--green); color: #fff; }
+
+    /* ========================
+       FORMULÁRIOS
+    ======================== */
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    .field         { margin-bottom: 14px; }
+    .row           { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+
+    /* ========================
+       LOGIN
+    ======================== */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 28px;
+    }
+
+    .login-title {
+      margin: 0 0 20px 0;
+      text-align: center;
+      color: var(--blue-dark);
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    /* ========================
+       MISC
+    ======================== */
+    .small          { font-size: 12px; color: var(--muted); }
+    .hidden         { display: none !important; }
+    .toolbar        { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .badge          { display: inline-block; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: bold; background: #eef5fb; color: var(--blue-dark); }
+    .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .section-divider { height: 1px; background: #eaeaea; margin: 18px 0; }
+
+    .notice         { padding: 12px 14px; border-radius: 12px; font-size: 14px; margin-bottom: 14px; }
+    .notice-info    { background: #eef5fb; color: var(--blue-dark); border: 1px solid #d7e7f6; }
+    .notice-success { background: #edf7ee; color: var(--green);    border: 1px solid #cfe7d2; }
+    .notice-error   { background: #fdeeee; color: var(--red);      border: 1px solid #f4caca; }
+
+    .checkbox-list  { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: #fff; }
+    .checkbox-item  { display: flex; gap: 10px; align-items: flex-start; padding: 8px 4px; border-bottom: 1px solid #f0f0f0; }
+    .checkbox-item:last-child { border-bottom: none; }
+    .checkbox-item input { width: auto; margin-top: 2px; }
+
+    table           { width: 100%; border-collapse: collapse; margin-top: 10px; background: #fff; border-radius: 12px; overflow: hidden; }
+    th, td          { padding: 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
+    th              { background: #F8FAFC; color: var(--blue-dark); }
+  </style>
+</head>
+<body>
+
+  <div id="app"></div>
+
+  <script>
+    /* ================================================
+     * ESTADO GLOBAL
+     * ================================================ */
+    var APP = {
+      user: null,
+      dashboard: {
+        statusDia: 'FECHADO',
+        metaDia: 0,
+        realizada: 0,
+        faltam: 0
+      },
+      quartos: [],
+      camareiras: [],
+      camareirasDoDia: [],
+      naoConformidades: [],
+      currentScreen: 'login',
+      pollingInterval: null
+    };
+
+    /* ================================================
+     * INIT
+     * ================================================ */
+    document.addEventListener('DOMContentLoaded', initApp);
+
+    function initApp() {
+      var savedUser   = localStorage.getItem('gov360_user');
+      var savedScreen = localStorage.getItem('gov360_screen') || 'login';
+
+      if (savedUser) {
+        APP.user = JSON.parse(savedUser);
+        APP.currentScreen = (savedScreen === 'login') ? 'menu' : savedScreen;
+        renderApp();
+        preloadData(function() {
+          refreshDashboard();
+          startPolling();
+          showScreen(APP.currentScreen);
+        });
+      } else {
+        renderApp();
+        showScreen('login');
+      }
+    }
+
+    function renderApp() {
+      var app = document.getElementById('app');
+      if (!APP.user) {
+        app.innerHTML = renderLogin();
+      } else {
+        app.innerHTML = renderMainLayout();
+      }
+    }
+
+    /* ================================================
+     * RENDER LOGIN
+     * ================================================ */
+    function renderLogin() {
+      return `
+        <div class="login-wrap">
+          <div class="login-card">
+            <h1 class="login-title">Gov360</h1>
+            <div class="field">
+              <label>Usuário</label>
+              <input type="text" id="loginUsuario" placeholder="Digite o usuário">
+            </div>
+            <div class="field">
+              <label>Senha</label>
+              <input type="password" id="loginSenha" placeholder="Digite a senha">
+            </div>
+            <button id="btnEntrar" class="btn-primary" style="width:100%" onclick="handleLogin()">Entrar</button>
+            <div class="small" style="margin-top:14px; text-align:center;">
+              Governança 360 • Controle de Auditoria Operacional
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ================================================
+     * RENDER MAIN LAYOUT
+     * Contém TODAS as telas dentro do #app.
+     * ================================================ */
+    function renderMainLayout() {
+      var nivelUser = APP.user.nivel;
+
+      return `
+        <!-- TOPBAR -->
+        <div class="topbar">
+          <div class="brand">Gov360</div>
+          <div class="userbox">
+            <div class="userbox-icon">${escapeHtml(APP.user.nome.charAt(0).toUpperCase())}</div>
+            <div>
+              <div class="userbox-nome">${escapeHtml(APP.user.nome)}</div>
+              <div class="userbox-cargo">${escapeHtml(APP.user.cargo || getCargoNome(APP.user.nivel))}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container">
+
+          <!-- =================== MENU =================== -->
+          <div id="screen-menu" class="screen">
+            <div class="card">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                <h2 class="title" style="margin:0;">Menu Principal</h2>
+                <div id="dataDoDia" style="font-size:13px; color:var(--muted); font-weight:600; padding-top:4px;"></div>
+              </div>
+
+              <div class="grid grid-4">
+                <div class="stat">
+                  <div class="stat-label">Status do Dia</div>
+                  <div id="statStatus" class="stat-value status-closed">FECHADO</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Meta do Dia</div>
+                  <div id="statMeta" class="stat-value">0</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Realizada</div>
+                  <div id="statRealizada" class="stat-value">0</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Faltam</div>
+                  <div id="statFaltam" class="stat-value">0</div>
+                </div>
+              </div>
+
+              <!-- Barra de progresso meta x realizada -->
+              <div id="progressoWrap" style="margin-top:16px; display:none;">
+                <div class="progress-wrap">
+                  <div id="progressoBar" class="progress-bar" style="width:0%"></div>
+                </div>
+                <div id="progressoLabel" class="progress-label">0 de 0 auditorias realizadas</div>
+              </div>
+
+              <div class="section-divider"></div>
+
+              <div class="menu-buttons">
+                <button class="btn-primary"   onclick="showScreen('iniciarDia')">Iniciar Dia</button>
+                <button class="btn-secondary" onclick="openRegistrarAuditoria()">Registrar Auditoria</button>
+                <button class="btn-light"     onclick="showScreen('diario')">Diário</button>
+                <button class="btn-warning"   onclick="handleEncerrarDia()">Encerrar Dia</button>
+                ${[0, 2].includes(nivelUser) ? `<button class="btn-light" onclick="showScreen('dashboard')">Dashboard</button>` : ''}
+                ${[0, 2].includes(nivelUser) ? `<button class="btn-light" onclick="showScreen('relatorios')">Relatórios</button>` : ''}
+                ${nivelUser === 0            ? `<button class="btn-light" onclick="openConfiguracoes()">Configurações</button>` : ''}
+                <button class="btn-danger" onclick="logout()">Sair</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- =================== INICIAR DIA =================== -->
+          <div id="screen-iniciarDia" class="screen">
+            <div class="card">
+              <div class="toolbar">
+                <button class="btn-light" onclick="showScreen('menu')">← Voltar ao Menu</button>
+              </div>
+              <h2 class="title">Iniciar Dia</h2>
+
+              <div class="notice notice-info">
+                O sistema calculará automaticamente a meta com base no percentual configurado.
+              </div>
+
+              <div class="field">
+                <label>Total de UH para vistoriar no dia (base operacional)</label>
+                <input type="number" id="inputTotalUH" min="1" placeholder="Ex.: 100">
+              </div>
+
+              <div class="field">
+                <label>Selecione as camareiras em operação hoje</label>
+                <div id="listaCamareirasDia" class="checkbox-list"></div>
+              </div>
+
+              <div class="footer-actions">
+                <button id="btnIniciarDia" class="btn-primary" onclick="handleIniciarDia()">
+                  Iniciar Dia
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- =================== REGISTRAR AUDITORIA =================== -->
+          <div id="screen-registrarAuditoria" class="screen">
+            <div class="card">
+              <div class="toolbar">
+                <button class="btn-light" onclick="showScreen('menu')">← Voltar ao Menu</button>
+              </div>
+              <h2 class="title">Registrar Auditoria</h2>
+
+              <div class="row">
+                <div class="field" id="quartoFieldWrap">
+                  <label>Número do quarto</label>
+                  <input list="quartosList" id="auditQuarto" placeholder="Digite ou selecione o quarto">
+                  <datalist id="quartosList"></datalist>
+                </div>
+
+                <div class="field">
+                  <label>Camareira</label>
+                  <select id="auditCamareira">
+                    <option value="">Selecione</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="field">
+                  <label>Tipo de atuação</label>
+                  <select id="auditAreaTipo" onchange="onAreaTipoChange()">
+                    <option value="">Selecione</option>
+                    <option value="QUARTOS">QUARTOS</option>
+                    <option value="AREA SOCIAL">ÁREA SOCIAL</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Status da UH</label>
+                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                  <label style="display:flex; align-items:center; gap:8px;">
+                    <input type="radio" name="statusUh" value="CONFORME" onchange="onStatusChange()"> UH Conforme
+                  </label>
+                  <label style="display:flex; align-items:center; gap:8px;">
+                    <input type="radio" name="statusUh" value="NAO_CONFORME" onchange="onStatusChange()"> UH Não Conforme
+                  </label>
+                </div>
+              </div>
+
+              <div id="naoConformeSection" class="hidden">
+                <div class="field">
+                  <label>Checklist de Não Conformidades</label>
+                  <div id="listaNaoConformidades" class="checkbox-list"></div>
+                </div>
+
+                <!-- Seção de fotos — aparece junto com não conformidades -->
+                <div class="field">
+                  <label>Fotos da Não Conformidade <span style="font-weight:400;color:var(--muted)">(máx. 3)</span></label>
+                  <div id="fotoPreviewArea" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;"></div>
+                  <div id="btnAnexarFotoWrap">
+                    <button type="button" class="btn-light" id="btnAnexarFoto" onclick="abrirSeletorFoto()" style="display:flex;align-items:center;gap:8px;">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0">
+                        <rect x="1" y="3" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.2"/>
+                        <circle cx="8" cy="8.5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M5.5 3L6.5 1.5h3L10.5 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                      </svg>
+                      Anexar Foto
+                    </button>
+                    <!-- Input oculto — aceita câmera e galeria em mobile -->
+                    <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none" onchange="onFotoSelecionada(event)">
+                  </div>
+                  <div class="small" id="fotoStatusMsg" style="margin-top:6px;"></div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Observação</label>
+                <textarea id="auditObservacao" rows="4" placeholder="Opcional"></textarea>
+              </div>
+
+              <div class="notice notice-info">Gov360 v1.1</div>
+
+              <div class="footer-actions">
+                <button id="btnSalvarAuditoria" class="btn-primary" onclick="handleRegistrarAuditoria()">Salvar Auditoria</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- =================== DIÁRIO =================== -->
+          <div id="screen-diario" class="screen">
+
+            <!-- TELA: cabeçalho + tabela (some no print) -->
+            <div class="card diario-tela">
+              <div class="toolbar">
+                <button class="btn-light" onclick="showScreen('menu')">← Voltar ao Menu</button>
+                <button class="btn-light" onclick="imprimirDiario()">Imprimir</button>
+              </div>
+              <h2 class="title">Diário do Dia</h2>
+              <div id="diarioContent">
+                <div class="notice notice-info">Carregando...</div>
+              </div>
+            </div>
+
+            <!-- IMPRESSÃO: cabeçalho completo + tabela (some na tela) -->
+            <div id="diarioPrint">
+              <div class="print-header">
+                <div class="print-logo">Gov360 • Controle de Auditoria Operacional</div>
+                <div class="print-info">
+                  <div>Usuário: <strong><span id="printUser"></span></strong></div>
+                  <div>Gerado em: <span id="printDate"></span></div>
+                </div>
+              </div>
+              <div id="diarioContentPrint"></div>
+            </div>
+
+          </div>
+
+          <!-- =================== DASHBOARD =================== -->
+          <div id="screen-dashboard" class="screen">
+            <div class="card">
+              <div class="toolbar">
+                <button class="btn-light" onclick="showScreen('menu')">← Voltar ao Menu</button>
+              </div>
+              <h2 class="title">Dashboard</h2>
+
+              <div class="grid grid-4" style="margin-bottom:20px;">
+                <div class="stat">
+                  <div class="stat-label">Status do Dia</div>
+                  <div id="dashStatus" class="stat-value status-closed">FECHADO</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Meta do Dia</div>
+                  <div id="dashMeta" class="stat-value">0</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Realizada</div>
+                  <div id="dashRealizada" class="stat-value">0</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Faltam</div>
+                  <div id="dashFaltam" class="stat-value">0</div>
+                </div>
+              </div>
+
+              <div class="notice notice-info">
+                Dashboard operacional em construção. Os indicadores acima refletem o estado atual do dia.
+              </div>
+            </div>
+          </div>
+
+          <!-- =================== RELATÓRIOS =================== -->
+          <div id="screen-relatorios" class="screen">
+
+            <!-- FILTROS -->
+            <div class="card rel-tela">
+              <div class="toolbar">
+                <button class="btn-light" onclick="showScreen('menu')">← Voltar ao Menu</button>
+                <button class="btn-light" onclick="imprimirRelatorio()">Imprimir</button>
+              </div>
+              <h2 class="title">Relatórios</h2>
+
+              <div class="row">
+                <div class="field">
+                  <label>Tipo de Relatório</label>
+                  <select id="relTipo" onchange="onRelTipoChange()">
+                    <option value="sintetico">Ficha de Desempenho</option>
+                    <option value="analitico">Histórico de Auditorias</option>
+                    <option value="auditor">Painel do Auditor</option>
+                    <option value="naoconformidades">Ranking de Não Conformidades</option>
+                  </select>
+                </div>
+                <div class="field" id="relPessoaWrap">
+                  <label id="relPessoaLabel">Camareira</label>
+                  <select id="relPessoa">
+                    <option value="">Todas</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="field">
+                  <label>Data Inicial</label>
+                  <input type="text" id="relDataInicial" placeholder="dd/mm/aaaa" maxlength="10" oninput="mascaraData(this)">
+                </div>
+                <div class="field">
+                  <label>Data Final</label>
+                  <input type="text" id="relDataFinal" placeholder="dd/mm/aaaa" maxlength="10" oninput="mascaraData(this)">
+                </div>
+              </div>
+
+              <div class="footer-actions">
+                <button id="btnGerarRelatorio" class="btn-primary" onclick="handleGerarRelatorio()">Gerar Relatório</button>
+                <button class="btn-light" onclick="limparFiltrosRelatorio()">Limpar Filtros</button>
+              </div>
+            </div>
+
+            <!-- RESULTADO -->
+            <div id="relatoriosContent"></div>
+
+            <!-- IMPRESSÃO -->
+            <div id="relatorioPrint" style="display:none;">
+              <div class="print-header">
+                <div class="print-logo">Gov360 • Controle de Auditoria Operacional</div>
+                <div class="print-info">
+                  <div>Usuário: <strong><span id="relPrintUser"></span></strong></div>
+                  <div>Gerado em: <span id="relPrintDate"></span></div>
+                </div>
+              </div>
+              <div id="relatorioPrintContent"></div>
+            </div>
+
+          </div>
+
+          <!-- =================== CONFIGURAÇÕES =================== -->
+          <!-- CORREÇÃO: estava fora do renderMainLayout() e do #app -->
+          <div id="screen-configuracoes" class="screen">
+            <div class="card">
+              <div class="toolbar">
+                <button class="btn-light" onclick="showScreen('menu')">← Voltar ao Menu</button>
+              </div>
+              <h2 class="title">Configurações</h2>
+
+              <!-- Percentual de Auditoria -->
+              <div class="card" style="box-shadow:none;">
+                <h3 class="subtitle">Percentual de Auditoria</h3>
+                <div class="row">
+                  <div class="field">
+                    <label>Percentual (%)</label>
+                    <input type="number" id="cfgPercentual" min="1" max="100">
+                  </div>
+                </div>
+                <button class="btn-primary" onclick="handleSalvarPercentual()">
+                  Salvar Percentual
+                </button>
+              </div>
+
+              <!-- Criar Usuário -->
+              <div class="card" style="box-shadow:none;">
+                <h3 class="subtitle">Criar Usuário</h3>
+                <div class="row">
+                  <div class="field">
+                    <label>Usuário</label>
+                    <input type="text" id="novoUsuario">
+                  </div>
+                  <div class="field">
+                    <label>Senha</label>
+                    <input type="text" id="novaSenha">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="field">
+                    <label>Nome</label>
+                    <input type="text" id="novoNome">
+                  </div>
+                  <div class="field">
+                    <label>Cargo</label>
+                    <input type="text" id="novoCargo" placeholder="Ex.: Governanta, Supervisora...">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="field">
+                    <label>Nível de Acesso</label>
+                    <select id="novoNivel">
+                      <option value="0">0 - Administrador</option>
+                      <option value="1">1 - Operacional</option>
+                      <option value="2">2 - Gerencial</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="btn-primary" onclick="handleCriarUsuario()">
+                  Criar Usuário
+                </button>
+              </div>
+
+              <!-- Resetar Senha -->
+              <div class="card" style="box-shadow:none;">
+                <h3 class="subtitle">Resetar Senha</h3>
+                <div class="row">
+                  <div class="field">
+                    <label>Usuário</label>
+                    <input type="text" id="resetUsuario">
+                  </div>
+                  <div class="field">
+                    <label>Nova Senha</label>
+                    <input type="text" id="resetNovaSenha">
+                  </div>
+                </div>
+                <button class="btn-warning" onclick="handleResetarSenha()">
+                  Resetar Senha
+                </button>
+              </div>
+
+              <!-- Controle do Dia -->
+              <div class="card" style="box-shadow:none;">
+                <h3 class="subtitle">Controle do Dia</h3>
+                <button class="btn-danger" onclick="handleForcarReaberturaDia()">
+                  Forçar Reabertura do Dia
+                </button>
+              </div>
+
+            </div>
+          </div>
+          <!-- fim .container -->
+        </div>
+      `;
+    }
+
+    /* ================================================
+     * NAVEGAÇÃO
+     * ================================================ */
+    function showScreen(screenName) {
+      APP.currentScreen = screenName;
+      localStorage.setItem('gov360_screen', screenName);
+
+      document.querySelectorAll('.screen').forEach(function(el) {
+        el.classList.remove('active');
+      });
+
+      var target = document.getElementById('screen-' + screenName);
+      if (target) target.classList.add('active');
+
+      // Ações específicas por tela
+      if (screenName === 'iniciarDia')         renderCamareirasIniciarDia();
+      if (screenName === 'registrarAuditoria') renderRegistrarAuditoria();
+      if (screenName === 'diario')             carregarDiario();       // sem redirecionamento
+      if (screenName === 'dashboard')          updateDashboardUI();
+      if (screenName === 'relatorios') { popularPessoasRelatorio(); setTimeout(inicializarCalendarios, 100); }
+    }
+
+    /* ================================================
+     * LOGIN / LOGOUT
+     * ================================================ */
+    function handleLogin() {
+      var usuario = document.getElementById('loginUsuario').value.trim();
+      var senha   = document.getElementById('loginSenha').value.trim();
+
+      if (!usuario || !senha) {
+        alert('Informe usuário e senha.');
+        return;
+      }
+
+      var btn = document.getElementById('btnEntrar');
+      if (btn) { btn.disabled = true; btn.textContent = 'Aguarde...'; }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+            alert(res.message);
+            return;
+          }
+
+          APP.user = res.user;
+          localStorage.setItem('gov360_user', JSON.stringify(APP.user));
+
+          renderApp();
+          preloadData(function() {
+            refreshDashboard();
+            startPolling();
+            showScreen('menu');
+          });
+        })
+        .withFailureHandler(function(err) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+          alert('Erro no login: ' + err.message);
+        })
+        .login(usuario, senha);
+    }
+
+    function logout() {
+      stopPolling();
+      APP.user = null;
+      APP.currentScreen = 'login';
+      localStorage.removeItem('gov360_user');
+      localStorage.removeItem('gov360_screen');
+      renderApp();
+      showScreen('login');
+    }
+
+    /* ================================================
+     * PRELOAD DE DADOS BASE
+     * Carrega em paralelo em vez de callback hell
+     * ================================================ */
+    function preloadData(callback) {
+      var pendente = 4;
+      var erros = [];
+
+      function check() {
+        pendente--;
+        if (pendente === 0) {
+          if (erros.length) console.warn('Preload com erros:', erros);
+          if (callback) callback();
+        }
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) { APP.quartos = res.success ? res.data : []; check(); })
+        .withFailureHandler(function(e)   { erros.push('quartos: ' + e.message); check(); })
+        .getQuartos();
+
+      google.script.run
+        .withSuccessHandler(function(res) { APP.camareiras = res.success ? res.data : []; check(); })
+        .withFailureHandler(function(e)   { erros.push('camareiras: ' + e.message); check(); })
+        .getCamareiras();
+
+      google.script.run
+        .withSuccessHandler(function(res) { APP.naoConformidades = res.success ? res.data : []; check(); })
+        .withFailureHandler(function(e)   { erros.push('naoConformidades: ' + e.message); check(); })
+        .getNaoConformidades();
+
+      google.script.run
+        .withSuccessHandler(function(res) { APP.camareirasDoDia = res.success ? res.data : []; check(); })
+        .withFailureHandler(function(e)   { erros.push('camareirasDoDia: ' + e.message); check(); })
+        .getCamareirasDoDia();
+    }
+
+    /* ================================================
+     * POLLING
+     * ================================================ */
+    function startPolling() {
+      stopPolling();
+      APP.pollingInterval = setInterval(refreshDashboard, 5000);
+    }
+
+    function stopPolling() {
+      if (APP.pollingInterval) {
+        clearInterval(APP.pollingInterval);
+        APP.pollingInterval = null;
+      }
+    }
+
+    function refreshDashboard() {
+      // Apenas getDashboardData no polling — reduz chamadas ao backend pela metade
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) return;
+          APP.dashboard = res.data;
+          updateDashboardUI();
+        })
+        .getDashboardData();
+    }
+
+    function updateDashboardUI() {
+      setText('statStatus',    APP.dashboard.statusDia);
+      setText('statMeta',      APP.dashboard.metaDia);
+      setText('statRealizada', APP.dashboard.realizada);
+      setText('statFaltam',    APP.dashboard.faltam);
+
+      setText('dashStatus',    APP.dashboard.statusDia);
+      setText('dashMeta',      APP.dashboard.metaDia);
+      setText('dashRealizada', APP.dashboard.realizada);
+      setText('dashFaltam',    APP.dashboard.faltam);
+
+      updateStatusClass('statStatus');
+      updateStatusClass('dashStatus');
+      atualizarBotaoIniciarDia();
+      atualizarProgresso();
+      atualizarDataDoDia();
+    }
+
+    function atualizarDataDoDia() {
+      var el = document.getElementById('dataDoDia');
+      if (!el) return;
+      var agora = new Date();
+      var diasSemana = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+      var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      var diaSemana = diasSemana[agora.getDay()];
+      var dia  = agora.getDate();
+      var mes  = meses[agora.getMonth()];
+      var ano  = agora.getFullYear();
+      el.textContent = diaSemana + ', ' + dia + ' de ' + mes + ' de ' + ano;
+    }
+
+    function atualizarProgresso() {
+      var wrap   = document.getElementById('progressoWrap');
+      var bar    = document.getElementById('progressoBar');
+      var label  = document.getElementById('progressoLabel');
+      if (!wrap || !bar || !label) return;
+
+      var meta      = Number(APP.dashboard.metaDia)   || 0;
+      var realizada = Number(APP.dashboard.realizada)  || 0;
+
+      if (meta > 0 && APP.dashboard.statusDia === 'ABERTO') {
+        var pct = Math.min(Math.round((realizada / meta) * 100), 100);
+        wrap.style.display  = 'block';
+        bar.style.width     = pct + '%';
+        bar.style.background = pct >= 100 ? 'var(--green)' : 'var(--blue-mid)';
+        label.textContent   = realizada + ' de ' + meta + ' auditorias realizadas (' + pct + '%)';
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+
+    function updateStatusClass(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('status-open', 'status-closed');
+      el.classList.add(APP.dashboard.statusDia === 'ABERTO' ? 'status-open' : 'status-closed');
+    }
+
+    function setText(id, value) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    /* ================================================
+     * INICIAR DIA
+     * ================================================ */
+    function renderCamareirasIniciarDia() {
+      var container = document.getElementById('listaCamareirasDia');
+      if (!container) return;
+
+      if (!APP.camareiras.length) {
+        container.innerHTML = '<div class="small">Nenhuma camareira cadastrada.</div>';
+        return;
+      }
+
+      container.innerHTML = APP.camareiras.map(function(c) {
+        return `
+          <div class="checkbox-item">
+            <input type="checkbox" value="${escapeHtml(c.nome)}" class="chk-camareira-dia">
+            <div style="flex:1"><strong>${escapeHtml(c.nome)}</strong></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function atualizarBotaoIniciarDia() {
+      var btn = document.getElementById('btnIniciarDia');
+      if (!btn) return;
+      if (APP.dashboard.statusDia === 'ABERTO') {
+        btn.disabled    = true;
+        btn.textContent = 'Dia já iniciado';
+      } else {
+        btn.disabled    = false;
+        btn.textContent = 'Iniciar Dia';
+      }
+    }
+
+    function handleIniciarDia() {
+      var totalUH = Number(document.getElementById('inputTotalUH').value);
+
+      if (!totalUH || totalUH <= 0) {
+        alert('Informe a quantidade total de UH.');
+        return;
+      }
+
+      var selecionadas = [];
+      document.querySelectorAll('.chk-camareira-dia').forEach(function(chk) {
+        if (chk.checked) selecionadas.push({ nome: chk.value });
+      });
+
+      if (!selecionadas.length) {
+        alert('Selecione ao menos uma camareira.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) { alert(res.message); return; }
+          APP.dashboard = res.data;
+          APP.camareirasDoDia = selecionadas;
+          updateDashboardUI();
+          alert(res.message);
+          showScreen('menu');
+        })
+        .withFailureHandler(function(e) { alert('Erro: ' + e.message); })
+        .iniciarDia({ totalUH: totalUH, camareiras: selecionadas, usuario: APP.user.nome });
+    }
+
+    /* ================================================
+     * REGISTRAR AUDITORIA
+     * ================================================ */
+    function openRegistrarAuditoria() {
+      // Atualiza camareiras do dia antes de abrir a tela
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) APP.camareirasDoDia = res.data;
+          showScreen('registrarAuditoria');
+        })
+        .withFailureHandler(function() {
+          showScreen('registrarAuditoria'); // abre mesmo com erro
+        })
+        .getCamareirasDoDia();
+    }
+
+    /* ================================================
+     * DETECÇÃO DE ANDROID
+     * Android Chrome/WebView tem suporte inconsistente ao <datalist>
+     * Usa <select> nativo como fallback seguro
+     * ================================================ */
+    var IS_ANDROID = /android/i.test(navigator.userAgent);
+
+    function renderRegistrarAuditoria() {
+      var selectCam = document.getElementById('auditCamareira');
+      var ncList    = document.getElementById('listaNaoConformidades');
+
+      // --- CAMPO DE QUARTO: datalist (PC/iPhone) ou select (Android) ---
+      var quartoWrap = document.getElementById('quartoFieldWrap');
+      if (quartoWrap) {
+        if (IS_ANDROID) {
+          // Android: select nativo, sem datalist
+          quartoWrap.innerHTML = `
+            <label>Número do quarto</label>
+            <select id="auditQuarto">
+              <option value="">Selecione o quarto</option>
+              ${APP.quartos.map(function(q) {
+                return '<option value="' + escapeHtml(q.numero) + '">' +
+                  escapeHtml(q.numero) + ' (' + escapeHtml(q.tipo) + ')</option>';
+              }).join('')}
+            </select>
+          `;
+        } else {
+          // PC / iPhone: input com datalist
+          quartoWrap.innerHTML = `
+            <label>Número do quarto</label>
+            <input list="quartosList" id="auditQuarto" placeholder="Digite ou selecione o quarto">
+            <datalist id="quartosList">
+              ${APP.quartos.map(function(q) {
+                return '<option value="' + escapeHtml(q.numero) + '">' +
+                  escapeHtml(q.numero) + ' (' + escapeHtml(q.tipo) + ')</option>';
+              }).join('')}
+            </datalist>
+          `;
+        }
+      }
+
+      if (ncList) {
+        if (!APP.naoConformidades.length) {
+          ncList.innerHTML = '<div class="small">Nenhuma não conformidade cadastrada.</div>';
+        } else {
+          ncList.innerHTML = APP.naoConformidades.map(function(nc) {
+            return `
+              <div class="checkbox-item">
+                <input type="checkbox" class="chk-nc" value="${escapeHtml(nc.descricao)}">
+                <div style="flex:1">${escapeHtml(nc.descricao)}</div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      if (selectCam) {
+        selectCam.innerHTML = '<option value="">Selecione</option>' +
+          APP.camareirasDoDia.map(function(c) {
+            return `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`;
+          }).join('');
+      }
+
+      limparFormularioAuditoria();
+    }
+
+    function onAreaTipoChange() {
+      var areaTipo    = document.getElementById('auditAreaTipo').value;
+      var quartoInput = document.getElementById('auditQuarto');
+      if (areaTipo === 'AREA SOCIAL') {
+        quartoInput.value    = '';
+        quartoInput.disabled = true;
+      } else {
+        quartoInput.disabled = false;
+      }
+    }
+
+    function onStatusChange() {
+      var status = getSelectedStatusUh();
+      var sec    = document.getElementById('naoConformeSection');
+      if (!sec) return;
+      if (status === 'NAO_CONFORME') {
+        sec.classList.remove('hidden');
+      } else {
+        sec.classList.add('hidden');
+      }
+    }
+
+    function getSelectedStatusUh() {
+      var checked = document.querySelector('input[name="statusUh"]:checked');
+      return checked ? checked.value : '';
+    }
+
+    function handleRegistrarAuditoria() {
+      var areaTipo   = document.getElementById('auditAreaTipo').value;
+      var camareira  = document.getElementById('auditCamareira').value;
+      var quarto     = document.getElementById('auditQuarto').value.trim();
+      var statusUh   = getSelectedStatusUh();
+      var observacao = document.getElementById('auditObservacao').value.trim();
+
+      var naoConformidades = [];
+      document.querySelectorAll('.chk-nc').forEach(function(chk) {
+        if (chk.checked) naoConformidades.push(chk.value);
+      });
+
+      if (!camareira)  { alert('Selecione a camareira.');          return; }
+      if (!areaTipo)   { alert('Selecione o tipo de atuação.');    return; }
+      if (areaTipo === 'QUARTOS' && !quarto) { alert('Informe o número do quarto.'); return; }
+      if (!statusUh)   { alert('Selecione o status da UH.');       return; }
+      if (statusUh === 'NAO_CONFORME' && !naoConformidades.length) {
+        alert('Selecione ao menos uma não conformidade.');
+        return;
+      }
+
+      // Verifica se ainda há fotos sendo enviadas
+      var fotosEnviando = FOTOS.filter(function(f) { return f.enviando; }).length;
+      if (fotosEnviando > 0) {
+        alert('Aguarde o envio das fotos antes de salvar.');
+        return;
+      }
+
+      var linksfotos = getFotosLinks();
+
+      // Trava o botão imediatamente para evitar duplo envio
+      var btn = document.getElementById('btnSalvarAuditoria');
+      if (btn) {
+        btn.disabled    = true;
+        btn.textContent = 'Salvando...';
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Salvar Auditoria'; }
+          if (!res.success) { alert(res.message); return; }
+          APP.dashboard = res.data;
+          updateDashboardUI();
+          alert(res.message);
+          limparFormularioAuditoria();
+        })
+        .withFailureHandler(function(e) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Salvar Auditoria'; }
+          alert('Erro: ' + e.message);
+        })
+        .registrarAuditoria({
+          areaTipo:         areaTipo,
+          camareira:        camareira,
+          quarto:           quarto,
+          statusUh:         statusUh,
+          observacao:       observacao,
+          naoConformidades: naoConformidades,
+          foto1:            linksfotos[0],
+          foto2:            linksfotos[1],
+          foto3:            linksfotos[2],
+          usuario:          APP.user
+        });
+    }
+
+    function limparFormularioAuditoria() {
+      var quartoEl = document.getElementById('auditQuarto');
+      if (quartoEl) {
+        quartoEl.value = '';
+        if (quartoEl.tagName === 'INPUT') quartoEl.disabled = false;
+      }
+
+      var obs = document.getElementById('auditObservacao');
+      if (obs) obs.value = '';
+
+      var areaTipo = document.getElementById('auditAreaTipo');
+      var cam      = document.getElementById('auditCamareira');
+      if (areaTipo) areaTipo.value = '';
+      if (cam)      cam.value      = '';
+
+      document.querySelectorAll('input[name="statusUh"]').forEach(function(r) { r.checked = false; });
+      document.querySelectorAll('.chk-nc').forEach(function(c)                { c.checked = false; });
+
+      var sec = document.getElementById('naoConformeSection');
+      if (sec) sec.classList.add('hidden');
+
+      // Limpa fotos
+      limparFotos();
+    }
+
+    /* ================================================
+     * FOTOS — Upload para Google Drive
+     * ================================================ */
+
+    // Array de objetos: { base64, mimeType, nome, linkUrl }
+    // linkUrl é preenchido após upload bem-sucedido
+    var FOTOS = [];
+    var MAX_FOTOS = 3;
+
+    function abrirSeletorFoto() {
+      if (FOTOS.length >= MAX_FOTOS) {
+        alert('Máximo de ' + MAX_FOTOS + ' fotos atingido.');
+        return;
+      }
+      var input = document.getElementById('fotoInput');
+      if (input) input.click();
+    }
+
+    function onFotoSelecionada(event) {
+      var file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+
+      if (FOTOS.length >= MAX_FOTOS) {
+        alert('Máximo de ' + MAX_FOTOS + ' fotos atingido.');
+        return;
+      }
+
+      var idx = FOTOS.length;
+      FOTOS.push({ base64: null, mimeType: 'image/jpeg', nome: file.name, linkUrl: null, enviando: true });
+      renderFotosPreviews();
+
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          // Comprime via Canvas: máx 1200px, qualidade 75% JPEG
+          var MAX_PX  = 1200;
+          var w = img.width;
+          var h = img.height;
+
+          if (w > MAX_PX || h > MAX_PX) {
+            if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
+            else       { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
+          }
+
+          var canvas  = document.createElement('canvas');
+          canvas.width  = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+          var dataUrl  = canvas.toDataURL('image/jpeg', 0.75);
+          var base64   = dataUrl.split(',')[1];
+          var mimeType = 'image/jpeg';
+          var nome     = 'foto_' + Date.now() + '_' + (idx + 1) + '.jpg';
+
+          FOTOS[idx].base64   = base64;
+          FOTOS[idx].dataUrl  = dataUrl;
+          FOTOS[idx].mimeType = mimeType;
+          FOTOS[idx].enviando = false;
+          renderFotosPreviews();
+
+          // Envia ao backend
+          FOTOS[idx].enviando = true;
+          renderFotosPreviews();
+
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res.success) {
+                FOTOS[idx].linkUrl  = res.url;
+                FOTOS[idx].enviando = false;
+              } else {
+                alert('Erro ao enviar foto: ' + res.message);
+                FOTOS.splice(idx, 1);
+              }
+              renderFotosPreviews();
+            })
+            .withFailureHandler(function(e) {
+              alert('Erro ao enviar foto: ' + e.message);
+              FOTOS.splice(idx, 1);
+              renderFotosPreviews();
+            })
+            .salvarFotoNoDrive({ base64: base64, mimeType: mimeType, nome: nome });
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removerFoto(idx) {
+      FOTOS.splice(idx, 1);
+      renderFotosPreviews();
+    }
+
+    function renderFotosPreviews() {
+      var area = document.getElementById('fotoPreviewArea');
+      var btn  = document.getElementById('btnAnexarFotoWrap');
+      var msg  = document.getElementById('fotoStatusMsg');
+      if (!area) return;
+
+      area.innerHTML = FOTOS.map(function(f, i) {
+        if (f.enviando) {
+          return '<div class="foto-uploading">Enviando...</div>';
+        }
+        return '<div class="foto-thumb-wrap">' +
+          '<img class="foto-thumb" src="' + (f.dataUrl || '') + '" alt="Foto ' + (i+1) + '">' +
+          '<button class="foto-thumb-remove" onclick="removerFoto(' + i + ')" title="Remover foto">✕</button>' +
+          '</div>';
+      }).join('');
+
+      // Esconde botão se atingiu o limite
+      if (btn) btn.style.display = FOTOS.length >= MAX_FOTOS ? 'none' : '';
+
+      // Mensagem de status
+      if (msg) {
+        var enviando = FOTOS.filter(function(f) { return f.enviando; }).length;
+        if (enviando > 0) {
+          msg.textContent = 'Enviando ' + enviando + ' foto(s)...';
+        } else if (FOTOS.length > 0) {
+          var ok = FOTOS.filter(function(f) { return f.linkUrl; }).length;
+          msg.textContent = ok + ' de ' + FOTOS.length + ' foto(s) salvas no Drive.';
+        } else {
+          msg.textContent = '';
+        }
+      }
+    }
+
+    function limparFotos() {
+      FOTOS = [];
+      renderFotosPreviews();
+      var btn = document.getElementById('btnAnexarFotoWrap');
+      if (btn) btn.style.display = '';
+    }
+
+    function getFotosLinks() {
+      // Retorna array de até 3 links (string vazia se não houver)
+      var links = ['', '', ''];
+      FOTOS.forEach(function(f, i) {
+        if (i < 3 && f.linkUrl) links[i] = f.linkUrl;
+      });
+      return links;
+    }
+
+    /* ================================================
+     * DIÁRIO
+     * Mostra tabela na tela e prepara versão para impressão
+     * ================================================ */
+    function carregarDiario() {
+      preencherInfoPrint();
+
+      // Mostra "Carregando" imediatamente
+      var boxTela = document.getElementById('diarioContent');
+      if (boxTela) boxTela.innerHTML = '<div class="notice notice-info">Carregando...</div>';
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          // Rebusca os elementos dentro do callback — garante DOM estável
+          var tela  = document.getElementById('diarioContent');
+          var print = document.getElementById('diarioContentPrint');
+
+          if (!res.success) {
+            var erro = '<div class="notice notice-error">' + escapeHtml(res.message) + '</div>';
+            if (tela)  tela.innerHTML  = erro;
+            if (print) print.innerHTML = erro;
+            return;
+          }
+
+          var data = res.data || [];
+
+          if (!data.length) {
+            var vazio = '<div class="notice notice-info">Nenhuma auditoria registrada hoje.</div>';
+            if (tela)  tela.innerHTML  = vazio;
+            if (print) print.innerHTML = vazio;
+            return;
+          }
+
+          var linhas = data.map(function(item) {
+            return '<tr>' +
+              '<td>' + escapeHtml(item.camareira) + '</td>' +
+              '<td style="text-align:center">' + item.quartosVistoriados + '</td>' +
+              '<td style="text-align:center">' + item.naoConformidades + '</td>' +
+              '</tr>';
+          }).join('');
+
+          var tabela =
+            '<table>' +
+              '<thead><tr>' +
+                '<th>Camareira</th>' +
+                '<th style="text-align:center">Quartos Vistoriados</th>' +
+                '<th style="text-align:center">Não Conformidades</th>' +
+              '</tr></thead>' +
+              '<tbody>' + linhas + '</tbody>' +
+            '</table>';
+
+          if (tela)  tela.innerHTML  = tabela;
+          if (print) print.innerHTML = tabela;
+        })
+        .withFailureHandler(function(e) {
+          var tela  = document.getElementById('diarioContent');
+          var print = document.getElementById('diarioContentPrint');
+          var msg = '<div class="notice notice-error">Erro ao carregar: ' + escapeHtml(e.message) + '</div>';
+          if (tela)  tela.innerHTML  = msg;
+          if (print) print.innerHTML = msg;
+        })
+        .getDiarioDoDia();
+    }
+
+    function preencherInfoPrint() {
+      var agora = new Date();
+      setText('printUser', APP.user ? APP.user.nome : '');
+      setText('printDate',
+        agora.toLocaleDateString('pt-BR') + ' ' +
+        agora.toLocaleTimeString('pt-BR')
+      );
+    }
+
+    /* ================================================
+     * ENCERRAR DIA
+     * ================================================ */
+    function handleEncerrarDia() {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.needsConfirmation) {
+            if (!confirm(res.message)) return;
+
+            google.script.run
+              .withSuccessHandler(function(res2) {
+                if (!res2.success) { alert(res2.message); return; }
+                APP.dashboard = res2.data;
+                updateDashboardUI();
+                alert(res2.message);
+                showScreen('menu');
+              })
+              .encerrarDia(true);
+            return;
+          }
+
+          if (!res.success) { alert(res.message); return; }
+          APP.dashboard = res.data;
+          updateDashboardUI();
+          alert(res.message);
+          showScreen('menu');
+        })
+        .encerrarDia(false);
+    }
+
+    /* ================================================
+     * RELATÓRIOS
+     * ================================================ */
+
+    // Máscara DD/MM/AAAA
+    function mascaraData(input) {
+      var v = input.value.replace(/\D/g, '').slice(0, 8);
+      if (v.length >= 5) v = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
+      else if (v.length >= 3) v = v.slice(0,2) + '/' + v.slice(2);
+      input.value = v;
+    }
+
+    function brParaIso(br) {
+      if (!br || br.indexOf('/') === -1) return '';
+      var p = br.split('/');
+      if (p.length !== 3 || p[2].length !== 4) return '';
+      return p[2] + '-' + p[1] + '-' + p[0];
+    }
+
+    function onRelTipoChange() {
+      popularPessoasRelatorio();
+      document.getElementById('relatoriosContent').innerHTML = '';
+    }
+
+    // Instâncias do Flatpickr
+    var _fpIni = null;
+    var _fpFim = null;
+
+    function inicializarCalendarios() {
+      var opcoesBase = {
+        locale:     'pt',
+        dateFormat: 'd/m/Y',
+        allowInput: true
+      };
+
+      var elIni = document.getElementById('relDataInicial');
+      var elFim = document.getElementById('relDataFinal');
+
+      // Destrói instâncias antigas se o elemento mudou (após renderApp)
+      if (_fpIni) { try { _fpIni.destroy(); } catch(e){} _fpIni = null; }
+      if (_fpFim) { try { _fpFim.destroy(); } catch(e){} _fpFim = null; }
+
+      if (elIni) _fpIni = flatpickr(elIni, opcoesBase);
+      if (elFim) _fpFim = flatpickr(elFim, opcoesBase);
+    }
+
+    function popularPessoasRelatorio() {
+      var tipo      = document.getElementById('relTipo');
+      var select    = document.getElementById('relPessoa');
+      var label     = document.getElementById('relPessoaLabel');
+      var wrap      = document.getElementById('relPessoaWrap');
+      if (!tipo || !select) return;
+
+      // Ranking não usa filtro por pessoa
+      if (tipo.value === 'naoconformidades') {
+        wrap.style.display = 'none';
+        return;
+      }
+      wrap.style.display = '';
+
+      var lista = [];
+      if (tipo.value === 'auditor') {
+        label.textContent = 'Auditor';
+        lista = [APP.user.nome];
+      } else {
+        label.textContent = 'Camareira';
+        lista = APP.camareiras.map(function(c) { return c.nome; });
+      }
+
+      select.innerHTML = '<option value="">Todas</option>' +
+        lista.map(function(nome) {
+          return '<option value="' + escapeHtml(nome) + '">' + escapeHtml(nome) + '</option>';
+        }).join('');
+    }
+
+    function limparFiltrosRelatorio() {
+      if (_fpIni) _fpIni.clear();
+      if (_fpFim) _fpFim.clear();
+      var pessoaEl = document.getElementById('relPessoa');
+      if (pessoaEl) pessoaEl.value = '';
+      document.getElementById('relatoriosContent').innerHTML = '';
+    }
+
+    function handleGerarRelatorio() {
+      var tipo    = document.getElementById('relTipo').value;
+      var pessoaEl = document.getElementById('relPessoa');
+      // Para ranking de não conformidades, pessoa sempre vazia (visão geral)
+      var pessoa  = (tipo === 'naoconformidades' || !pessoaEl) ? '' : pessoaEl.value;
+
+      var dataIniBr = document.getElementById('relDataInicial').value.trim();
+      var dataFimBr = document.getElementById('relDataFinal').value.trim();
+
+      // Converte dd/mm/aaaa → yyyy-mm-dd para o backend
+      function brParaIso(br) {
+        if (!br || br.length < 10) return '';
+        var p = br.split('/');
+        if (p.length !== 3 || p[2].length !== 4) return '';
+        return p[2] + '-' + p[1] + '-' + p[0];
+      }
+
+      var isoIni = brParaIso(dataIniBr);
+      var isoFim = brParaIso(dataFimBr);
+
+      if (dataIniBr && !isoIni) { alert('Data Inicial inválida. Use dd/mm/aaaa.'); return; }
+      if (dataFimBr && !isoFim) { alert('Data Final inválida. Use dd/mm/aaaa.');   return; }
+
+      var box = document.getElementById('relatoriosContent');
+      box.innerHTML = '<div class="notice notice-info" style="margin-top:16px;">Gerando relatório...</div>';
+
+      var btn = document.getElementById('btnGerarRelatorio');
+      if (btn) { btn.disabled = true; btn.textContent = 'Aguarde...'; }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Gerar Relatório'; }
+          var box2 = document.getElementById('relatoriosContent');
+          if (!res.success) {
+            box2.innerHTML = '<div class="notice notice-error">' + escapeHtml(res.message) + '</div>';
+            return;
+          }
+          renderRelatorio(res, tipo, dataIniBr, dataFimBr, pessoa);
+        })
+        .withFailureHandler(function(e) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Gerar Relatório'; }
+          var box2 = document.getElementById('relatoriosContent');
+          box2.innerHTML = '<div class="notice notice-error">Erro: ' + escapeHtml(e.message) + '</div>';
+        })
+        .getRelatoriosData({
+          tipoRelatorio: tipo,
+          pessoa:        pessoa,
+          visaoGeral:    pessoa === '',
+          dataInicial:   isoIni,
+          dataFinal:     isoFim,
+          userNivel:     APP.user.nivel
+        });
+    }
+
+    function renderRelatorio(res, tipo, dataIni, dataFim, pessoa) {
+      var data  = res.data || [];
+      var box   = document.getElementById('relatoriosContent');
+      var print = document.getElementById('relatorioPrintContent');
+
+      // Preenche cabeçalho de impressão
+      var agora = new Date();
+      setText('relPrintUser', APP.user.nome);
+      setText('relPrintDate', agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR'));
+
+      if (!data.length) {
+        var msgVazio = res.debugMsg || 'Nenhum dado encontrado para o filtro informado.';
+        box.innerHTML = '<div class="notice notice-info" style="margin-top:16px;">' + escapeHtml(msgVazio) + '</div>';
+        return;
+      }
+
+      var periodoTxt = '';
+      if (dataIni || dataFim) periodoTxt = ' • Período: ' + (dataIni || '?') + ' até ' + (dataFim || '?');
+      var pessoaTxt = pessoa ? ' • ' + pessoa : '';
+
+      var html = '';
+
+      // ── 1. FICHA DE DESEMPENHO (sintético) ──────────────────────────────
+      if (tipo === 'sintetico') {
+        var totalGeral = 0, confGeral = 0, ncGeral = 0;
+        data.forEach(function(r) { totalGeral += r.total; confGeral += r.conformes; ncGeral += r.naoConformes; });
+
+        html += '<div class="card" style="margin-top:16px;">';
+        html += '<div class="rel-titulo">Ficha de Desempenho' + pessoaTxt + periodoTxt + '</div>';
+        html += '<div class="rel-totais">';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Total de Auditorias</div><div class="rel-total-value">' + totalGeral + '</div></div>';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Conformes</div><div class="rel-total-value verde">' + confGeral + '</div></div>';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Não Conformes</div><div class="rel-total-value vermelho">' + ncGeral + '</div></div>';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Taxa Geral</div><div class="rel-total-value">' + (totalGeral > 0 ? Math.round((confGeral/totalGeral)*100) : 0) + '%</div></div>';
+        html += '</div>';
+        html += '<table><thead><tr><th>Camareira</th><th>Total</th><th>Conformes</th><th>Não Conformes</th><th>Taxa de Conformidade</th></tr></thead><tbody>';
+        data.forEach(function(r) {
+          html += '<tr>' +
+            '<td>' + escapeHtml(r.camareira) + '</td>' +
+            '<td style="text-align:center">' + r.total + '</td>' +
+            '<td style="text-align:center"><span class="badge-conforme">' + r.conformes + '</span></td>' +
+            '<td style="text-align:center"><span class="badge-naoconforme">' + r.naoConformes + '</span></td>' +
+            '<td><div class="taxa-bar-wrap"><div class="taxa-bar"><div class="taxa-bar-fill" style="width:' + r.taxaConformidade + '%"></div></div><span class="taxa-txt">' + r.taxaConformidade + '%</span></div></td>' +
+            '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      // ── 2. HISTÓRICO DE AUDITORIAS (analítico) ──────────────────────────
+      else if (tipo === 'analitico') {
+        html += '<div class="card" style="margin-top:16px;">';
+        html += '<div class="rel-titulo">Histórico de Auditorias' + pessoaTxt + periodoTxt + '</div>';
+        html += '<div class="rel-totais">';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Total de Registros</div><div class="rel-total-value">' + data.length + '</div></div>';
+        html += '</div>';
+        html += '<div style="overflow-x:auto"><table><thead><tr><th>Data</th><th>Hora</th><th>Camareira</th><th>Quarto / Área</th><th>Tipo</th><th>Status</th><th>Não Conformidades</th><th>Observação</th><th>Auditor</th><th>Fotos</th></tr></thead><tbody>';
+        data.forEach(function(r) {
+          var statusBadge = r.statusUh === 'CONFORME'
+            ? '<span class="badge-conforme">Conforme</span>'
+            : '<span class="badge-naoconforme">Não Conforme</span>';
+
+          var ncFormatado = r.naoConformidades
+            ? escapeHtml(r.naoConformidades).replace(/\s*\|\s*/g, '<br>')
+            : '—';
+
+          var quartoCell = r.quarto
+            ? '<a href="#" class="link-quarto" onclick="abrirDetalheAuditoria(\'' + escapeHtml(r.id) + '\'); return false;">' + escapeHtml(r.quarto) + '</a>'
+            : '<span style="color:var(--muted)">Área Social</span>';
+
+          // Fotos como miniaturas clicáveis na tabela
+          var fotosCell = '—';
+          var fotosValidas = [r.foto1, r.foto2, r.foto3].filter(function(f) { return f && f.trim(); });
+          if (fotosValidas.length) {
+            fotosCell = fotosValidas.map(function(url) {
+              var thumbUrl  = driveThumbUrl(url);
+              var linkAbrir = driveLinkAbrir(url);
+              return '<a href="' + escapeHtml(linkAbrir) + '" target="_blank">' +
+                '<img src="' + escapeHtml(thumbUrl) + '" ' +
+                'style="width:48px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #ddd;" ' +
+                'onerror="this.parentNode.innerHTML=\'<span style=&quot;font-size:10px&quot;>foto</span>\'">' +
+                '</a>';
+            }).join(' ');
+          }
+
+          html += '<tr>' +
+            '<td style="white-space:nowrap">' + escapeHtml(r.data) + '</td>' +
+            '<td style="white-space:nowrap">' + escapeHtml(r.hora) + '</td>' +
+            '<td>' + escapeHtml(r.camareira) + '</td>' +
+            '<td>' + quartoCell + '</td>' +
+            '<td>' + escapeHtml(r.areaTipo) + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+            '<td>' + ncFormatado + '</td>' +
+            '<td>' + escapeHtml(r.observacao || '—') + '</td>' +
+            '<td>' + escapeHtml(r.usuario) + '</td>' +
+            '<td>' + fotosCell + '</td>' +
+            '</tr>';
+        });
+        html += '</tbody></table></div></div>';
+      }
+
+      // ── 3. PAINEL DO AUDITOR ─────────────────────────────────────────────
+      else if (tipo === 'auditor') {
+        var totalGeral = 0, confGeral = 0, ncGeral = 0;
+        data.forEach(function(r) { totalGeral += r.total; confGeral += r.conformes; ncGeral += r.naoConformes; });
+
+        html += '<div class="card" style="margin-top:16px;">';
+        html += '<div class="rel-titulo">Painel do Auditor' + pessoaTxt + periodoTxt + '</div>';
+        html += '<div class="rel-totais">';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Total de Auditorias</div><div class="rel-total-value">' + totalGeral + '</div></div>';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Conformes</div><div class="rel-total-value verde">' + confGeral + '</div></div>';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Não Conformes</div><div class="rel-total-value vermelho">' + ncGeral + '</div></div>';
+        html += '</div>';
+        html += '<table><thead><tr><th>Auditor</th><th>Total</th><th>Conformes</th><th>Não Conformes</th><th>Taxa de Conformidade</th></tr></thead><tbody>';
+        data.forEach(function(r) {
+          html += '<tr>' +
+            '<td>' + escapeHtml(r.auditor) + '</td>' +
+            '<td style="text-align:center">' + r.total + '</td>' +
+            '<td style="text-align:center"><span class="badge-conforme">' + r.conformes + '</span></td>' +
+            '<td style="text-align:center"><span class="badge-naoconforme">' + r.naoConformes + '</span></td>' +
+            '<td><div class="taxa-bar-wrap"><div class="taxa-bar"><div class="taxa-bar-fill" style="width:' + r.taxaConformidade + '%"></div></div><span class="taxa-txt">' + r.taxaConformidade + '%</span></div></td>' +
+            '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      // ── 4. RANKING DE NÃO CONFORMIDADES ─────────────────────────────────
+      else if (tipo === 'naoconformidades') {
+        var totalOcorrencias = data.reduce(function(s, r) { return s + r.qtd; }, 0);
+        html += '<div class="card" style="margin-top:16px;">';
+        html += '<div class="rel-titulo">Ranking de Não Conformidades' + periodoTxt + '</div>';
+        html += '<div class="rel-totais">';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Tipos Distintos</div><div class="rel-total-value">' + data.length + '</div></div>';
+        html += '<div class="rel-total-card"><div class="rel-total-label">Total de Ocorrências</div><div class="rel-total-value vermelho">' + totalOcorrencias + '</div></div>';
+        html += '</div>';
+        html += '<table><thead><tr><th>#</th><th>Não Conformidade</th><th>Ocorrências</th><th>Frequência</th></tr></thead><tbody>';
+        data.forEach(function(r, i) {
+          var freq = totalOcorrencias > 0 ? Math.round((r.qtd / totalOcorrencias) * 100) : 0;
+          html += '<tr>' +
+            '<td><span class="ranking-num">' + (i + 1) + '</span></td>' +
+            '<td>' + escapeHtml(r.descricao) + '</td>' +
+            '<td style="text-align:center"><span class="badge-naoconforme">' + r.qtd + '</span></td>' +
+            '<td><div class="taxa-bar-wrap"><div class="taxa-bar"><div class="taxa-bar-fill" style="width:' + freq + '%; background:var(--red)"></div></div><span class="taxa-txt">' + freq + '%</span></div></td>' +
+            '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      box.innerHTML   = html;
+      if (print) print.innerHTML = html;
+    }
+
+    /* ================================================
+     * CONFIGURAÇÕES
+     * ================================================ */
+    function openConfiguracoes() {
+      if (APP.user.nivel !== 0) { alert('Acesso negado.'); return; }
+
+      // Carrega configurações atuais antes de exibir a tela
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) { alert(res.message); return; }
+          // Popula percentual atual
+          var el = document.getElementById('cfgPercentual');
+          if (el) el.value = res.data.percentualAuditoria || 50;
+        })
+        .getConfiguracoes(APP.user.nivel);
+
+      showScreen('configuracoes');
+    }
+
+    function handleSalvarPercentual() {
+      var el = document.getElementById('cfgPercentual');
+      var percentual = Number(el ? el.value : 0);
+
+      if (!percentual || percentual < 1 || percentual > 100) {
+        alert('Informe um percentual válido entre 1 e 100.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) { alert(res.message); })
+        .withFailureHandler(function(e)   { alert('Erro: ' + e.message); })
+        .salvarPercentualAuditoria(APP.user.nivel, percentual);
+    }
+
+    function handleCriarUsuario() {
+      var usuario = document.getElementById('novoUsuario').value.trim();
+      var senha   = document.getElementById('novaSenha').value.trim();
+      var nome    = document.getElementById('novoNome').value.trim();
+      var nivel   = Number(document.getElementById('novoNivel').value);
+      var cargo   = document.getElementById('novoCargo').value.trim();
+
+      if (!usuario || !senha || !nome) {
+        alert('Preencha todos os campos.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert(res.message);
+          if (res.success) {
+            document.getElementById('novoUsuario').value = '';
+            document.getElementById('novaSenha').value   = '';
+            document.getElementById('novoNome').value    = '';
+            document.getElementById('novoCargo').value   = '';
+          }
+        })
+        .withFailureHandler(function(e) { alert('Erro: ' + e.message); })
+        .criarUsuario(APP.user.nivel, { usuario: usuario, senha: senha, nome: nome, nivel: nivel, cargo: cargo });
+    }
+
+    function handleResetarSenha() {
+      var usuario   = document.getElementById('resetUsuario').value.trim();
+      var novaSenha = document.getElementById('resetNovaSenha').value.trim();
+
+      if (!usuario || !novaSenha) {
+        alert('Informe o usuário e a nova senha.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          alert(res.message);
+          if (res.success) {
+            document.getElementById('resetUsuario').value   = '';
+            document.getElementById('resetNovaSenha').value = '';
+          }
+        })
+        .withFailureHandler(function(e) { alert('Erro: ' + e.message); })
+        .resetarSenha(APP.user.nivel, usuario, novaSenha);
+    }
+
+    function handleForcarReaberturaDia() {
+      if (!confirm('Deseja realmente forçar a reabertura do dia?')) return;
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) { alert(res.message); return; }
+          // Atualiza dashboard com os valores preservados do encerramento
+          if (res.data) APP.dashboard = res.data;
+          updateDashboardUI();
+          alert(res.message);
+          showScreen('menu');
+        })
+        .withFailureHandler(function(e) { alert('Erro: ' + e.message); })
+        .forcarReaberturaDia({ userNivel: APP.user.nivel });
+    }
+
+    /* ================================================
+     * UTILITÁRIOS
+     * ================================================ */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g,  '&amp;')
+        .replace(/</g,  '&lt;')
+        .replace(/>/g,  '&gt;')
+        .replace(/"/g,  '&quot;')
+        .replace(/'/g,  '&#039;');
+    }
+
+    function getCargoNome(nivel) {
+      if (nivel === 0) return 'Administrador';
+      if (nivel === 1) return 'Operacional';
+      if (nivel === 2) return 'Gerencial';
+      return 'Usuário';
+    }
+
+    /* ================================================
+     * MODAL DETALHE DE AUDITORIA
+     * ================================================ */
+    function abrirDetalheAuditoria(id) {
+      var overlay = document.getElementById('modalDetalheOverlay');
+      var corpo   = document.getElementById('modalDetalheCorpo');
+      if (!overlay || !corpo) return;
+
+      corpo.innerHTML = '<div class="notice notice-info">Carregando...</div>';
+      overlay.classList.add('active');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) {
+            corpo.innerHTML = '<div class="notice notice-error">' + escapeHtml(res.message) + '</div>';
+            return;
+          }
+          var r = res.data;
+          var ncFormatado = r.naoConformidades
+            ? r.naoConformidades.split('|').map(function(s) { return escapeHtml(s.trim()); }).join('<br>')
+            : '—';
+          var statusBadge = r.statusUh === 'CONFORME'
+            ? '<span class="badge-conforme">Conforme</span>'
+            : '<span class="badge-naoconforme">Não Conforme</span>';
+
+          var conteudo =
+            '<div class="modal-row"><span class="modal-label">Data</span><span class="modal-valor">' + escapeHtml(r.data) + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Hora</span><span class="modal-valor">' + escapeHtml(r.hora) + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Camareira</span><span class="modal-valor">' + escapeHtml(r.camareira) + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Quarto / Área</span><span class="modal-valor">' + escapeHtml(r.quarto || 'Área Social') + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Tipo</span><span class="modal-valor">' + escapeHtml(r.areaTipo) + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Status</span><span class="modal-valor">' + statusBadge + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Não Conformidades</span><span class="modal-valor">' + ncFormatado + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Observação</span><span class="modal-valor">' + escapeHtml(r.observacao || '—') + '</span></div>' +
+            '<div class="modal-row"><span class="modal-label">Auditor</span><span class="modal-valor">' + escapeHtml(r.usuario) + '</span></div>' +
+            renderFotosDetalhe([r.foto1, r.foto2, r.foto3]);
+
+          // Preenche modal na tela
+          corpo.innerHTML = conteudo;
+
+          // Preenche bloco de impressão
+          var agora = new Date();
+          setText('detalhePrintUser', APP.user.nome);
+          setText('detalhePrintDate', agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR'));
+          var printCorpo = document.getElementById('detalheAuditoriaPrintCorpo');
+          if (printCorpo) {
+            printCorpo.innerHTML =
+              '<h2 style="color:#1F4E79;margin:0 0 16px 0;">Detalhe da Auditoria — Quarto ' + escapeHtml(r.quarto || 'Área Social') + '</h2>' +
+              conteudo;
+          }
+        })
+        .withFailureHandler(function(e) {
+          corpo.innerHTML = '<div class="notice notice-error">Erro: ' + escapeHtml(e.message) + '</div>';
+        })
+        .getAuditoriaDetalhe(id);
+    }
+
+    /* ================================================
+     * FOTOS NO DETALHE DA AUDITORIA
+     * ================================================ */
+    function renderFotosDetalhe(fotos) {
+      var validas = fotos.filter(function(f) { return f && f.trim(); });
+      if (!validas.length) return '';
+
+      var imgs = validas.map(function(url) {
+        var thumbUrl  = driveThumbUrl(url);
+        var linkAbrir = driveLinkAbrir(url);
+        return '<a href="' + escapeHtml(linkAbrir) + '" target="_blank" style="display:inline-block;">' +
+          '<img src="' + escapeHtml(thumbUrl) + '" ' +
+          'style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid var(--border);" ' +
+          'onerror="this.parentNode.innerHTML=\'<span style=&quot;font-size:11px;color:var(--muted)&quot;>Foto<br>salva</span>\'">' +
+          '</a>';
+      }).join('');
+
+      return '<div class="modal-row" style="flex-direction:column;align-items:flex-start;">' +
+        '<span class="modal-label" style="margin-bottom:8px;">Fotos</span>' +
+        '<div class="foto-print-wrap" style="display:flex;gap:8px;flex-wrap:wrap;">' + imgs + '</div>' +
+        '</div>';
+    }
+
+    // Extrai o fileId de qualquer formato de URL do Drive
+    function driveFileId(url) {
+      if (!url) return '';
+      // formato: /uc?export=view&id=FILE_ID ou /thumbnail?id=FILE_ID ou /file/d/FILE_ID
+      var m;
+      m = url.match(/[?&]id=([^&]+)/);
+      if (m) return m[1];
+      m = url.match(/\/file\/d\/([^/]+)/);
+      if (m) return m[1];
+      return '';
+    }
+
+    // URL de thumbnail — carrega dentro do iframe do GAS sem bloqueio
+    function driveThumbUrl(url) {
+      var id = driveFileId(url);
+      if (id) return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w800';
+      return url;
+    }
+
+    // URL para abrir a foto em tamanho original
+    function driveLinkAbrir(url) {
+      var id = driveFileId(url);
+      if (id) return 'https://drive.google.com/file/d/' + id + '/view';
+      return url;
+    }
+
+    function fecharDetalheAuditoria() {
+      var overlay = document.getElementById('modalDetalheOverlay');
+      if (overlay) overlay.classList.remove('active');
+    }
+
+    /* ================================================
+     * IMPRESSÃO CENTRAL
+     * Garante que só um bloco aparece por vez
+     * ================================================ */
+    function ativarPrint(idBloco) {
+      // Remove classe de todos os blocos de print
+      ['diarioPrint', 'relatorioPrint', 'detalheAuditoriaPrint'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('ativo-print');
+      });
+      // Ativa apenas o bloco solicitado
+      var alvo = document.getElementById(idBloco);
+      if (alvo) alvo.classList.add('ativo-print');
+    }
+
+    function imprimirDiario() {
+      aplicarOrientacao('portrait');
+      ativarPrint('diarioPrint');
+      window.print();
+    }
+
+    function imprimirRelatorio() {
+      var tipo = document.getElementById('relTipo') ? document.getElementById('relTipo').value : '';
+      var orientacao = (tipo === 'analitico') ? 'landscape' : 'portrait';
+      aplicarOrientacao(orientacao);
+      ativarPrint('relatorioPrint');
+      window.print();
+    }
+
+    function imprimirDetalheAuditoria() {
+      fecharDetalheAuditoria();
+      aplicarOrientacao('portrait');
+      ativarPrint('detalheAuditoriaPrint');
+      setTimeout(function() { window.print(); }, 200);
+    }
+
+    function aplicarOrientacao(orientacao) {
+      var el = document.getElementById('printOrientacaoStyle');
+      if (!el) {
+        el = document.createElement('style');
+        el.id = 'printOrientacaoStyle';
+        document.head.appendChild(el);
+      }
+      el.textContent = '@page { size: ' + orientacao + '; margin: 1cm; }';
+    }
+  </script>
+  <!-- MODAL: Detalhe da Auditoria -->
+  <div id="modalDetalheOverlay" class="modal-overlay" onclick="fecharDetalheAuditoria()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <button class="modal-fechar" onclick="fecharDetalheAuditoria()">✕ Fechar</button>
+      <div class="modal-titulo">Detalhe da Auditoria</div>
+      <div id="modalDetalheCorpo"></div>
+      <div style="margin-top:20px; display:flex; gap:10px;">
+        <button class="btn-light" onclick="imprimirDetalheAuditoria()">Imprimir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPRESSÃO: Detalhe da Auditoria (oculto na tela) -->
+  <div id="detalheAuditoriaPrint" style="display:none;">
+    <div class="print-header">
+      <div class="print-logo">Gov360 • Controle de Auditoria Operacional</div>
+      <div class="print-info">
+        <div>Usuário: <strong><span id="detalhePrintUser"></span></strong></div>
+        <div>Gerado em: <span id="detalhePrintDate"></span></div>
+      </div>
+    </div>
+    <div id="detalheAuditoriaPrintCorpo"></div>
+  </div>
+
+</body>
+</html>
